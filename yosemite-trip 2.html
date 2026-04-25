@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yosemite Trip">
+<meta name="theme-color" content="#1C3A2E">
+<title>Yosemite Trip</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#F5F3EE;font-family:'Inter',-apple-system,sans-serif}
+#root{min-height:100vh}
+::-webkit-scrollbar{display:none}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+input:focus,textarea:focus{outline:none}
+.leaflet-container{font-family:Inter,sans-serif!important}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#888;font-size:16px">Laden…</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+// Storage using localStorage
+window.storage={
+  get:async function(k){var v=localStorage.getItem('yt_'+k);if(v===null)throw new Error('nf');return{key:k,value:v};},
+  set:async function(k,v){localStorage.setItem('yt_'+k,v);return{key:k,value:v};},
+  delete:async function(k){localStorage.removeItem('yt_'+k);}
+};
+</script>
+<script>
+(function(){
+var h=React.createElement.bind(React);
+var F="'Inter',-apple-system,sans-serif";
+var C={forest:'#1C3A2E',pine:'#2D5A44',sage:'#4A7C5F',gold:'#C4935A',amber:'#E8B97A',
+       dark:'#1A1A1A',mid:'#555',muted:'#888',border:'#E4E0D8',bg:'#F5F3EE',card:'#FFFFFF'};
+
+function ico(d){
+  return function(p){
+    var sz=p.size||16,cl=p.color||'currentColor',sw=p.strokeWidth||2;
+    return h('svg',{width:sz,height:sz,viewBox:'0 0 24 24',fill:'none',stroke:cl,
+      strokeWidth:sw,strokeLinecap:'round',strokeLinejoin:'round',style:p.style||{}},
+      d.map(function(x,i){return h(x[0],Object.assign({key:i},x[1]));}));
+  };
+}
+var NavIcon=ico([['polyline',{points:'9 18 15 12 9 6'}]]);
+var XIcon=ico([['line',{x1:'18',y1:'6',x2:'6',y2:'18'}],['line',{x1:'6',y1:'6',x2:'18',y2:'18'}]]);
+var ChkIcon=ico([['polyline',{points:'20 6 9 12 4 16'}]]);
+var TrIcon=ico([['polyline',{points:'3 6 5 6 21 6'}],
+  ['path',{d:'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'}],
+  ['line',{x1:'10',y1:'11',x2:'10',y2:'17'}],['line',{x1:'14',y1:'11',x2:'14',y2:'17'}]]);
+var PlsIcon=ico([['line',{x1:'12',y1:'5',x2:'12',y2:'19'}],['line',{x1:'5',y1:'12',x2:'19',y2:'12'}]]);
+function CamSvg(){return h('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'white',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},
+  h('rect',{x:'3',y:'3',width:'18',height:'18',rx:'2'}),h('circle',{cx:'8.5',cy:'8.5',r:'1.5'}),h('polyline',{points:'21 15 16 10 5 21'}));}
+
+const WM = 'https://upload.wikimedia.org/wikipedia/commons';
+const PHOTOS = {
+  // Yosemite
+  tunnelview:   `${WM}/thumb/9/92/Tunnel_View_%28181604703%29.jpg/800px-Tunnel_View_%28181604703%29.jpg`,
+  halfdome:     `${WM}/thumb/b/b3/Yosemite_Valley_Half_Dome.jpg/800px-Yosemite_Valley_Half_Dome.jpg`,
+  glacierpoint: `${WM}/thumb/2/27/Yosemite_Valley_from_Glacier_Point.JPG/800px-Yosemite_Valley_from_Glacier_Point.JPG`,
+  vernalfall:   `${WM}/thumb/6/6a/Vernal_fall_from_mist_trail.jpg/600px-Vernal_fall_from_mist_trail.jpg`,
+  misttrail:    `${WM}/thumb/7/74/Mist_trail_lower.jpg/600px-Mist_trail_lower.jpg`,
+  valleylodge:  `${WM}/thumb/2/23/Yosemite_Valley_Lodge_Hotel_-_Yosemite_National_Park.jpg/800px-Yosemite_Valley_Lodge_Hotel_-_Yosemite_National_Park.jpg`,
+  meadow:       `${WM}/thumb/2/2a/Yosemite_Valley_floor_meadow.jpg/800px-Yosemite_Valley_floor_meadow.jpg`,
+  // Travel
+  schiphol:     `${WM}/thumb/7/7b/Schiphol_gate.jpg/800px-Schiphol_gate.jpg`,
+  sfo:          `${WM}/thumb/3/38/SFO_international_terminal.jpg/800px-SFO_international_terminal.jpg`,
+  highway120:   `${WM}/thumb/3/34/Big_Oak_Flat_Road%2C_Yosemite_NP.jpg/800px-Big_Oak_Flat_Road%2C_Yosemite_NP.jpg`,
+  parkentrance: `${WM}/thumb/d/d5/Yosemite_entrance_sign.jpg/800px-Yosemite_entrance_sign.jpg`,
+  // Food
+  innout:       `${WM}/thumb/2/22/In-N-Out_Burger_protein_style.jpg/640px-In-N-Out_Burger_protein_style.jpg`,
+  // Wedding / Livermore
+  livermore:    `${WM}/thumb/9/97/Livermore_california.jpg/800px-Livermore_california.jpg`,
+  vineyard:     `${WM}/thumb/5/53/Wente_Vineyards_Livermore_California.jpg/800px-Wente_Vineyards_Livermore_California.jpg`,
+  wedding:      `${WM}/thumb/a/a2/Wedding_photography.jpg/800px-Wedding_photography.jpg`,
+  // Fallback gradient colors per type
+};
+
+// Map stop IDs to photos
+const STOP_PHOTO = {
+  zo1: PHOTOS.schiphol,
+  zo2: PHOTOS.sfo,
+  zo3: PHOTOS.highway120,
+  zo4: PHOTOS.highway120,
+  zo5: PHOTOS.highway120,
+  zo6: PHOTOS.highway120,
+  zo7: PHOTOS.parkentrance,
+  zo8: PHOTOS.tunnelview,
+  zo9: PHOTOS.valleylodge,
+  ma0: PHOTOS.halfdome,
+  ma1: PHOTOS.valleylodge,
+  ma2: PHOTOS.misttrail,
+  ma3a: PHOTOS.vernalfall,
+  ma3b: PHOTOS.glacierpoint,
+  ma4a: PHOTOS.vernalfall,
+  ma4b: PHOTOS.glacierpoint,
+  ma5: PHOTOS.halfdome,
+  ma6: PHOTOS.valleylodge,
+  di1: PHOTOS.meadow,
+  di2: PHOTOS.valleylodge,
+  di3: PHOTOS.innout,
+  di4: PHOTOS.livermore,
+  di5: PHOTOS.livermore,
+  di6: PHOTOS.livermore,
+  di7: PHOTOS.livermore,
+  wo1: PHOTOS.livermore,
+  wo2: PHOTOS.wedding,
+  do1: PHOTOS.wedding,
+  do2: PHOTOS.wedding,
+  vr1: PHOTOS.vineyard,
+  za1: PHOTOS.livermore,
+  za2: PHOTOS.sfo,
+  za3: PHOTOS.schiphol,
+};
+
+const HERO_PHOTO = {
+  zo: PHOTOS.tunnelview,
+  ma: PHOTOS.glacierpoint,
+  di: PHOTOS.meadow,
+  wo: PHOTOS.livermore,
+  do: PHOTOS.wedding,
+  vr: PHOTOS.vineyard,
+  za: PHOTOS.schiphol,
+};
+const DAYS = [
+  {
+    id: 'zo', label: 'Zo', date: '10 mei',
+    title: 'Amsterdam → Yosemite', subtitle: 'KL605 vertrekt 09:50. Vanavond sta je voor El Capitan.',
+    color: C.gold,
+    heroImg: 'https://images.unsplash.com/photo-1562310503-a918c4c61e38',
+    map: { lat: 37.7459, lng: -119.5332, zoom: 11 },
+    pins: [
+      { lat: 37.6213, lng: -122.3790, label: 'SFO — aankomst 11:45' },
+      { lat: 37.7979, lng: -120.9680, label: 'Safeway Manteca' },
+      { lat: 37.7975, lng: -120.9600, label: 'Black Bear Diner Manteca' },
+      { lat: 37.8765, lng: -119.8730, label: 'Park Entrance Big Oak Flat' },
+      { lat: 37.7193, lng: -119.6785, label: 'Tunnel View' },
+      { lat: 37.7489, lng: -119.5971, label: 'Yosemite Valley Lodge' },
+    ],
+    stops: [
+      {
+        id: 'zo1', time: '09:50', dur: '10u55 vlucht', label: 'Vertrek Schiphol',
+        bullets: ['KLM KL605 · Boekingscode ZPWETL · Stoel 22A (raam, voorin)', 'AMS → SFO · vluchtduur 10u55 · Boeing 787-10 · Economy', 'Wees op Schiphol uiterlijk 07:30', 'Terminal D/E · Online inchecken via klm.com'],
+        drive: null,
+      },
+      {
+        id: 'zo2', time: '11:45', dur: '45 min', pinIndex: 1, label: 'Aankomst SFO',
+        bullets: ['AirTrain Blue Line → Rental Car Center (4e verdieping)', 'Enterprise of Alamo · Economy of Compact ophalen', 'Volle tank · Offline Google Maps aanzetten', 'Rijden!'],
+        drive: null,
+      },
+      {
+        id: 'zo3', time: '12:30', dur: '1u15 rijden', label: 'SFO → Safeway Manteca',
+        bullets: ['Route: SFO → I-380 E → I-580 E → I-205 E → CA-120 E', 'Afstand: ~110 km · Rijdtijd: ~1u15', 'Blijf op CA-120 East richting Manteca', 'Safeway is op je route — niet omrijden'],
+        drive: { from: 'San Francisco Airport, CA', to: 'Safeway, 1550 W Yosemite Ave, Manteca, CA', label: 'SFO → Safeway Manteca' },
+      },
+      {
+        id: 'zo4', time: '14:00', dur: '30 min', pinIndex: 2, label: 'Safeway Manteca — boodschappen',
+        bullets: ['Open 24/7 · direct op CA-120', 'Haal: water (3L+), trail-snacks, lunch voor morgen', 'Energierepen, noten, fruit', 'In het park is alles duur en beperkt — doe het hier'],
+        drive: null,
+      },
+      {
+        id: 'zo5', time: '14:30', dur: '45 min', pinIndex: 3, label: 'Black Bear Diner — Manteca',
+        bullets: ['American diner klassiek — bear-theme, enorme porties', 'All-day breakfast · burgers · milkshakes', 'Adres: 1703 E Yosemite Ave, Manteca', 'Open 7-20u · zit vlak naast Safeway — nul omrijden'],
+        drive: null,
+      },
+      {
+        id: 'zo6', time: '15:30', dur: '1u30 rijden', pinIndex: 4, label: 'Black Bear Diner → Park entrance',
+        bullets: ['Route: CA-120 E richting Groveland en Yosemite', 'Afstand: ~120 km · Rijdtijd: ~1u30', 'Weg wordt smaller en spectaculairder na Groveland', 'Ticket aan de poort of vooraf via recreation.gov ($35 + $100 non-US)'],
+        drive: { from: 'Manteca, CA', to: 'Big Oak Flat Entrance, Yosemite National Park, CA', label: 'Manteca → Yosemite Park Entrance' },
+      },
+      {
+        id: 'zo8', time: '18:15', dur: '30 min', pinIndex: 5, label: 'Tunnel View',
+        img: 'https://images.unsplash.com/photo-1562310503-a918c4c61e38',
+        bullets: ['Rijd door de tunnel — parkeer direct links', 'El Capitan links · Half Dome rechts · Bridalveil Fall midden', 'Dit is jouw eerste keer. Laat het even landen.', 'Golden hour hier = onvergetelijk — neem de tijd'],
+        drive: null,
+      },
+      {
+        id: 'zo9', time: '19:00', dur: 'nacht', pinIndex: 6, label: 'Yosemite Valley Lodge — check-in',
+        img: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562',
+        bullets: ['Reservering #16U60F · Bunk Room', 'Loop direct naar Lower Yosemite Falls (5 min lopen)', 'In mei staat die op maximum volume — je hoort hem vanuit de lobby', 'BEAR BOXES: niets in de auto — ook geen tandpasta of parfum', 'Diner: Mountain Room Restaurant (reserveer!) of Base Camp Eatery'],
+        drive: null,
+      },
+    ],
+  },
+  {
+    id: 'ma', label: 'Ma', date: '11 mei',
+    title: 'De hike van je leven', subtitle: 'Mist Trail of Grand Panorama. Kies op de ochtend zelf.',
+    color: C.sage,
+    heroImg: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+    map: { lat: 37.7276, lng: -119.5579, zoom: 13 },
+    pins: [
+      { lat: 37.7489, lng: -119.5971, label: 'Valley Lodge — start dag' },
+      { lat: 37.7335, lng: -119.5578, label: 'Happy Isles — trailhead' },
+      { lat: 37.7154, lng: -119.5441, label: 'Vernal Fall' },
+      { lat: 37.7043, lng: -119.5318, label: 'Nevada Fall' },
+      { lat: 37.7257, lng: -119.5741, label: 'Glacier Point' },
+      { lat: 37.7489, lng: -119.5971, label: 'Valley Lodge — diner' },
+    ],
+    stops: [
+      {
+        id: 'ma0', time: '', dur: '5 min', label: 'Kies je route',
+        img: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
+        bullets: ['OPTIE A — Mist Trail Loop: 11 km · 580m stijging · 5-7 uur', 'OPTIE B — Grand Panorama: 23 km · 1350m stijging · 9-11 uur', 'Optie B: Glacier Point Road is dicht — panorama helemaal voor jezelf', 'Kies B als je fit bent, goed weer, uitgerust', 'Check trail conditions: nps.gov/yose'],
+        drive: null,
+      },
+      {
+        id: 'ma1', time: 'A 06:30 / B 05:30', dur: '45 min', pinIndex: 1, label: 'Ontbijt + packing',
+        img: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085',
+        bullets: ['Base Camp Eatery (check openingstijd avond ervoor)', 'Meenemen: regenjas · 3-4L water · lunch + snacks · laagjes', 'Zonnebrand · goede schoenen', 'Optie B extra: trekking poles + microspikes'],
+        drive: null,
+      },
+      {
+        id: 'ma2', time: 'A 07:15 / B 06:15', dur: '15 min', pinIndex: 2, label: 'Shuttle → Happy Isles',
+        img: 'https://images.unsplash.com/photo-1519046904884-53103b34b206',
+        bullets: ['Gratis Valleywide Shuttle', 'Stop 8 (Valley Lodge) → Stop 16 (Happy Isles)', 'Elke 12-22 minuten · start 07:00', 'Optie B: neem de allereerste shuttle'],
+        drive: null,
+      },
+      {
+        id: 'ma3a', time: 'Start 07:45', dur: '5-7 uur', pinIndex: 3, label: 'Optie A — Mist Trail (11 km)',
+        img: 'https://images.unsplash.com/photo-1601918774946-25832a4be0d6',
+        bullets: ['Happy Isles → Mist Trail stenen trappen', 'Vernal Fall (nat van de nevel!) → Nevada Fall (lunch)', 'John Muir Trail terug naar Happy Isles', 'Totaal: ~5-7 uur'],
+        drive: null,
+      },
+      {
+        id: 'ma3b', time: 'Start 06:45', dur: '9-11 uur', pinIndex: 3, label: 'Optie B — Grand Panorama (23 km)',
+        img: 'https://images.unsplash.com/photo-1567226408970-10c4dffb25ce',
+        bullets: ['Happy Isles → Mist Trail → Vernal Fall → Nevada Fall', 'Panorama Trail → Illilouette Fall', 'Glacier Point (2199m) — de Valley 820m onder je', 'Four Mile Trail afdaling → Valley floor → Shuttle'],
+        drive: null,
+      },
+      {
+        id: 'ma4a', time: 'A 11:30', dur: '45 min', pinIndex: 4, label: 'Lunch — Nevada Fall',
+        img: 'https://images.unsplash.com/photo-1551632811-561732d1e306',
+        bullets: ['Bovenop een 181m waterval', 'Half Dome kijkt je aan', 'Drinkfontein beschikbaar', 'Eet hier · drink water · kijk lang'],
+        drive: null,
+      },
+      {
+        id: 'ma4b', time: 'B 12:30', dur: '45 min', pinIndex: 5, label: 'Glacier Point',
+        img: 'https://images.unsplash.com/photo-1567226408970-10c4dffb25ce',
+        bullets: ['Half Dome recht voor je · de Valley 820m onder je', 'Yosemite Falls · Vernal Fall · Nevada Fall allemaal zichtbaar', 'Geen toeristen — de weg is dicht', 'Jij hebt dit verdiend door te lopen'],
+        drive: null,
+      },
+      {
+        id: 'ma5', time: 'A 14:00 / B 17:00', dur: '15 min', pinIndex: 6, label: 'Terug in de Valley',
+        img: 'https://images.unsplash.com/photo-1470004914212-05527e49370b',
+        bullets: ['A: Happy Isles Stop 16 → Shuttle Stop 8', 'B: Four Mile Trailhead Stop 11 → Shuttle Stop 8', 'Je hebt dit gedaan', 'Ga douchen'],
+        drive: null,
+      },
+      {
+        id: 'ma6', time: 'A 18:30 / B 19:30', dur: '1-2 uur', pinIndex: 6, label: 'Diner — verdiend',
+        img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591',
+        bullets: ['Curry Village Pizza Deck — pizza + bier, Half Dome zichtbaar', 'Mountain Room Restaurant — upscale, reserveer vooraf', 'Ahwahnee Dining Room — fine dining 1927 grand hotel (10 min shuttle)'],
+        drive: null,
+      },
+    ],
+  },
+  {
+    id: 'di', label: 'Di', date: '12 mei',
+    title: 'Yosemite → Livermore', subtitle: 'Laatste ochtend in het park. Dan richting de bruiloft.',
+    color: '#8B6A3E',
+    heroImg: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800',
+    map: { lat: 37.6819, lng: -121.7680, zoom: 10 },
+    pins: [
+      { lat: 37.7489, lng: -119.5971, label: 'Valley Lodge — vertrek' },
+      { lat: 37.7982, lng: -120.8583, label: 'In-N-Out Burger Manteca' },
+      { lat: 37.2871, lng: -121.9500, label: 'Tom & Brittany — Campbell' },
+      { lat: 37.6819, lng: -121.7680, label: 'Aankomst Livermore' },
+      { lat: 37.6900, lng: -121.7740, label: 'Chevron — tanken' },
+      { lat: 37.6624, lng: -121.8996, label: "Men's Wearhouse Pleasanton" },
+      { lat: 37.6905, lng: -121.7780, label: 'Enterprise — auto inleveren' },
+    ],
+    stops: [
+      {
+        id: 'di1', time: '08:00', dur: '30 min', pinIndex: 1, label: "Cook's Meadow — laatste ochtend",
+        img: 'https://images.unsplash.com/photo-1545579133-99bb5ab189bd',
+        bullets: ['5 min lopen van de lodge', 'Half Dome in ochtendlicht · mist over de Valley', 'Dit is je afsluiting van Yosemite'],
+        drive: null,
+      },
+      {
+        id: 'di2', time: '09:00', dur: '30 min', label: 'Check-out + vertrek',
+        img: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791',
+        bullets: ['Check-out voor 11:00 · Reservering #16U60F', 'Auto inladen · laatste blik op de Valley', 'Rijden LANGZAAM eerste 45 min — bear country, mei is piekmaand'],
+        drive: { from: 'Yosemite Valley Lodge, CA', to: 'In-N-Out Burger, 1490 E Yosemite Ave, Manteca, CA', label: 'Yosemite → In-N-Out Manteca' },
+      },
+      {
+        id: 'di3', time: '11:45', dur: '3u30 rijden', pinIndex: 2, label: 'In-N-Out Burger Manteca',
+        img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd',
+        bullets: ['Vers vlees — nooit ingevroren', 'Bestel: Double-Double Animal Style', 'Fries Well-Done · Chocolate of Neapolitan Shake', '1490 E. Yosemite Ave · open 10:30'],
+        drive: null,
+      },
+      {
+        id: 'di4', time: '13:00', dur: '45 min', pinIndex: 4, label: 'Aankomst Livermore + auto inleveren',
+        img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed',
+        bullets: ['Enterprise — 3569 1st St · 925-449-3600 · ma-vr 8-17u, za 9-13u', 'Hertz — 1702 N Vasco Rd · 925-371-0788 · ma-vr 7:30-17u', 'Bel vooraf bij late aankomst voor after-hours drop-off'],
+        drive: { from: 'In-N-Out Burger, Manteca, CA', to: 'Enterprise Rent-A-Car, 3569 1st St, Livermore, CA', label: 'Manteca → Livermore' },
+      },
+      {
+        id: 'di7', time: 'Middag', dur: '15 min', pinIndex: 3, label: 'Tom Brandsma & Brittany',
+        bullets: ['Tom Brandsma / Brittany Azevedo-Brandsma', '1310 Harriet Ave', 'Campbell, CA 95008, USA'],
+        drive: { from: 'In-N-Out Burger, 1490 E Yosemite Ave, Manteca, CA', to: '1310 Harriet Ave, Campbell, CA 95008', label: 'In-N-Out → Tom & Brittany (Campbell)' },
+      },
+      {
+        id: 'di4b', time: 'Middag', dur: '10 min', pinIndex: 5, label: 'Tanken — Chevron Livermore',
+        bullets: ['Chevron · 3594 1st St, Livermore CA (naast Enterprise)', 'Tank VOLLEDIG vullen voor inlevering — anders $30-50 toeslag', 'Verwacht $4.50-5.50/gallon · ~$90 voor volle tank', 'Met één volle tank bij SFO red je de hele trip: ~500km totaal'],
+        drive: null,
+      },
+      {
+        id: 'di5', time: 'Middag', dur: '30 min', pinIndex: 6, label: "Pak ophalen — Men's Wearhouse",
+        img: 'https://images.unsplash.com/photo-1594938298603-c8148c4b4e93',
+        bullets: ["Men's Wearhouse · 2453 Stoneridge Mall Rd, Pleasanton CA 94588", '925-598-9703 · Groepsnummer: 13524567', 'Meenemen: ID + groepsnummer', '~10 min rijden van Livermore via I-580 E'],
+        drive: null,
+      },
+      {
+        id: 'di6', time: 'Middag', dur: '15 min', pinIndex: 7, label: 'Auto inleveren — Kayak via Enterprise',
+        bullets: ['Enterprise Livermore · 3569 1st St, Livermore CA', 'Tel: 925-449-3600 · ma-vr 8-17u · za 9-13u', 'Bel vooraf als je na sluitingstijd aankomt', 'One-way boeken via Kayak.com of AutoSlash bij reservering'],
+        drive: { from: "Men's Wearhouse, 2453 Stoneridge Mall Rd, Pleasanton, CA", to: 'Enterprise Rent-A-Car, 3569 1st St, Livermore, CA', label: "Men's Wearhouse → Enterprise Livermore" },
+      },
+    ],
+  },
+  {
+    id: 'wo', label: 'Wo', date: '13 mei',
+    title: 'Rehearsal Dinner', subtitle: 'Rehearsal dinner — avond voor de grote dag.',
+    color: C.wed,
+    heroImg: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d',
+    map: { lat: 37.6819, lng: -121.7680, zoom: 13 },
+    pins: [
+      { lat: 37.6819, lng: -121.7680, label: 'Airbnb Livermore' },
+      { lat: 37.6819, lng: -121.7650, label: 'Rehearsal Dinner' },
+    ],
+    stops: [
+      {
+        id: 'wo1', time: '', dur: 'check-in', pinIndex: 1, label: 'Airbnb Livermore',
+        img: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf',
+        bullets: ['airbnb.nl/rooms/1489890257869375696', 'Voeg toe: adres + check-in code', 'Parkeren · WiFi · contactpersoon host'],
+        drive: null,
+      },
+      {
+        id: 'wo2', time: 'Woensdag avond', dur: 'avond', pinIndex: 2, label: 'Rehearsal Dinner',
+        img: 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf',
+        bullets: ['Avond voor de bruiloft', 'Voeg toe: locatie, tijdstip, dresscode, contactpersonen'],
+        drive: null,
+      },
+    ],
+  },
+  {
+    id: 'do', label: 'Do', date: '14 mei',
+    title: 'Bruiloft', subtitle: 'Ceremonie vanaf 15:30.',
+    color: C.wed,
+    heroImg: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc',
+    map: { lat: 37.6819, lng: -121.7680, zoom: 13 },
+    pins: [
+      { lat: 37.6819, lng: -121.7680, label: 'Ceremonie — 15:30' },
+      { lat: 37.6819, lng: -121.7650, label: 'Receptie & diner' },
+    ],
+    stops: [
+      {
+        id: 'do1', time: '15:30', dur: '1-2 uur', pinIndex: 1, label: 'Ceremonie',
+        img: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6',
+        bullets: ['Ceremonie vanaf half vier', 'Voeg toe: locatie, parkeren, aankomsttijd'],
+        drive: null,
+      },
+      {
+        id: 'do2', time: 'Avond', dur: 'avond', pinIndex: 2, label: 'Receptie & diner',
+        img: 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf',
+        bullets: ['Voeg toe: locatie receptie/diner, tijden, bijzonderheden'],
+        drive: null,
+      },
+    ],
+  },
+  {
+    id: 'vr', label: 'Vr', date: '15 mei',
+    title: 'Wine Country', subtitle: 'Livermore valley — bijkomen met een goed glas.',
+    color: C.wed,
+    heroImg: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb',
+    map: { lat: 37.6624, lng: -121.7680, zoom: 12 },
+    pins: [
+      { lat: 37.6834, lng: -121.7201, label: 'Wente Vineyards' },
+      { lat: 37.6795, lng: -121.7249, label: 'Concannon Vineyard' },
+      { lat: 37.6560, lng: -121.8001, label: "Murrieta's Well" },
+    ],
+    stops: [
+      {
+        id: 'vr1', time: '', dur: 'dagdeel · ~10 min rijden', pinIndex: 1, label: 'Livermore Wine Country',
+        img: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb',
+        bullets: ['Wente Vineyards — 5565 Tesla Rd (groot, iconisch)', 'Concannon Vineyard — 4590 Tesla Rd', "Murrieta's Well — 3005 Mines Rd (kleiner, sfeervoller)", 'Reserveer wine tasting vooraf', '~10 min rijden van je Airbnb'],
+        drive: { from: 'Livermore, CA', to: 'Wente Vineyards, 5565 Tesla Rd, Livermore, CA', label: 'Airbnb → Wine Country (~10 min)' },
+      },
+    ],
+  },
+  {
+    id: 'za', label: 'Za', date: '16 mei',
+    title: 'Terug naar Amsterdam', subtitle: 'KL606 vertrekt 13:45. Morgen 09:05 thuis.',
+    color: C.gold,
+    heroImg: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05',
+    map: { lat: 37.6213, lng: -122.3790, zoom: 12 },
+    pins: [
+      { lat: 37.6819, lng: -121.7680, label: 'Livermore — vertrek' },
+      { lat: 37.6213, lng: -122.3790, label: 'SFO — inchecken' },
+      { lat: 37.6210, lng: -122.3785, label: 'SFO — KL606 13:45' },
+    ],
+    stops: [
+      {
+        id: 'za1', time: '10:00', dur: '45 min rijden', pinIndex: 1, label: 'Vertrek Livermore → SFO',
+        img: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800',
+        bullets: ['Vertrek uiterlijk 10:00 — SFO is druk op zaterdag', 'Wees op SFO om 10:45 (3 uur voor vertrek)'],
+        drive: { from: 'Livermore, CA', to: 'San Francisco International Airport, CA', label: 'Livermore → SFO' },
+      },
+      {
+        id: 'za2', time: '10:45', dur: '2 uur', pinIndex: 2, label: 'Inchecken SFO',
+        img: 'https://images.unsplash.com/photo-1544016768-982d1554f0b9',
+        bullets: ['SFO International Terminal', 'Inchecken bij KLM · code ZPWETL'],
+        drive: null,
+      },
+      {
+        id: 'za3', time: '13:45', dur: '10u20 vlucht', pinIndex: 3, label: 'KLM KL606 — Vertrek naar Amsterdam',
+        img: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05',
+        bullets: ['KLM KL606 · Boekingscode ZPWETL', 'SFO → AMS · 10u20 · Boeing 787-10 · Economy', 'Vertrek: 13:45 za 16 mei', 'Aankomst: 09:05 zo 17 mei'],
+        drive: null,
+      },
+    ],
+  },
+];
+const SHOPPING = [
+  { id: 'sh1', cat: 'Hike essentials', items: ['Regenjas of poncho', 'Wandelschoenen met grip', 'Trekking poles (huur park of REI)', 'Microspikes — alleen Optie B'] },
+  { id: 'sh2', cat: 'Eten en drinken', items: ['2 waterflessen min. 3L totaal', 'Trail mix en energierepen x6', 'Sandwiches of wraps voor trail', 'Bananen en appels', 'Koffie to-go vroege ochtend'] },
+  { id: 'sh3', cat: 'Persoonlijk', items: ['Zonnebrand SPF 50+', 'Lippenbalsem met UV', 'Insectenwerend middel', 'Kleine EHBO kit', 'Wisselkleren in de auto'] },
+  { id: 'sh4', cat: 'Logistiek', items: ['Offline Google Maps downloaden — nu!', 'Powerbank volledig opgeladen', 'Rugzak 20-30L voor hike', 'Zaklamp voor vroeg vertrek', 'Snacks voor in de auto'] },
+];
+const DEFAULT_CHECKLIST = [
+  { id: 'cl1', text: 'Auto huren boeken — Kayak of AutoSlash (one-way SFO → Livermore)' },
+  { id: 'cl2', text: 'Yosemite park entrance ticket — recreation.gov ($35 + $100 non-US)' },
+  { id: 'cl3', text: 'Online inchecken KLM — klm.com · code ZPWETL' },
+  { id: 'cl4', text: 'Mountain Room Restaurant reserveren voor zondagavond' },
+  { id: 'cl5', text: 'Trail conditions checken — nps.gov/yose (dag voor hike)' },
+  { id: 'cl6', text: 'Offline Google Maps downloaden voor Yosemite' },
+  { id: 'cl7', text: 'Bruiloft details invullen in app — locatie, dresscode, transport' },
+  { id: 'cl8', text: "Pak ophalen bevestigen — Men's Wearhouse groepsnr. 13524567" },
+  { id: 'cl9', text: 'Reisverzekering controleren — geldig in VS?' },
+  { id: 'cl10', text: 'Reisapotheek — pijnstillers, blaren, antiseptisch' },
+  { id: 'cl11', text: 'Creditcard activeren voor gebruik in VS' },
+];
+const FOOD = [
+  { name: 'In-N-Out Burger Manteca', tag: 'Californisch icoon', desc: 'Vers vlees, nooit ingevroren. Op E Yosemite Ave. Bestel Animal Style.', addr: '1490 E. Yosemite Ave, Manteca', hours: 'Daily 10:30-01:00', tip: 'Double-Double Animal Style + fries well-done + chocolate shake', color: C.sage },
+  { name: 'Black Bear Diner Manteca', tag: 'Classic Americana', desc: 'Enorme porties, all-day American breakfast, bear-theme decor. Direct naast de In-N-Out — beiden op E Yosemite Ave.', addr: '1703 E Yosemite Ave, Manteca', hours: 'Daily 7-20u', tip: 'Goed alternatief als je wil zitten en uitgebreid wil lunchen.', color: '#5A3E2B' },
+  { name: 'Curry Village Pizza Deck', tag: 'Yosemite klassiek', desc: 'Pizza op open terras, Half Dome zichtbaar. Na een hike de beste pizza van je leven.', addr: 'Curry Village, Yosemite Valley', hours: 'Seasonally open', tip: 'Na Optie B: pizza en bier. Punt.', color: C.pine },
+  { name: 'Mountain Room Restaurant', tag: 'Lodge dining', desc: 'Upscale, groot raam met uitzicht op Yosemite Falls. Steaks, seafood, goede wijn. Reserveer van tevoren.', addr: 'Yosemite Valley Lodge', hours: 'Reserveer vooraf', tip: 'Eerste avond in het park, voor je moe bent.', color: '#3A5E4A' },
+  { name: 'The Ahwahnee Dining Room', tag: 'Grand Historic 1927', desc: 'Fine dining in het meest iconische hotel van Yosemite. Kathedraalplafond, dress code.', addr: 'The Ahwahnee Hotel', hours: 'Reserveer weken vooraf', tip: 'Eén avond helemaal uit de bol gaan.', color: '#5A4A2A' },
+];
+
+function StopPhoto(p){
+  var src=p.customSrc||STOP_PHOTO[p.sid];
+  if(!src)return h('div',{style:{height:p.h||88,background:'linear-gradient(135deg,'+p.dc+'40,'+p.dc+'80)'}});
+  return h('div',{style:{height:p.h||88,overflow:'hidden',position:'relative'}},
+    h('img',{key:src,src:src,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'},
+      onError:function(e){if(!p.customSrc)e.target.style.display='none';}}),
+    h('div',{style:{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.4) 0%,transparent 55%)'}}));}
+
+function HeroPhoto(p){
+  var src=p.customSrc||HERO_PHOTO[p.dayId];
+  if(!src)return h('div',{style:{width:'100%',height:'100%',background:'linear-gradient(135deg,'+p.color+'60,'+p.color+')'}});
+  return h('div',{style:{width:'100%',height:'100%',overflow:'hidden'}},
+    h('img',{key:src,src:src,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'},
+      onError:function(e){e.target.style.display='none';}}));}
+
+function DayMap(p){
+  var day=p.day,ref=React.useRef(null),inst=React.useRef(null);
+  var mid=React.useRef('m'+day.id+Math.random().toString(36).slice(2,7));
+  React.useEffect(function(){
+    if(!window.L)return;
+    if(inst.current){inst.current.remove();inst.current=null;}
+    var el=document.getElementById(mid.current);
+    if(!el)return;
+    var map=window.L.map(el,{zoomControl:true,scrollWheelZoom:false});
+    inst.current=map;
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+    var lls=day.pins.map(function(pin){return[pin.lat,pin.lng];});
+    if(lls.length>1){map.fitBounds(window.L.latLngBounds(lls),{padding:[30,30]});
+      window.L.polyline(lls,{color:day.color,weight:2.5,opacity:.5,dashArray:'6,5'}).addTo(map);}
+    else{map.setView(lls[0],day.map.zoom);}
+    day.pins.forEach(function(pin,i){
+      var bg=i===0?day.color:i===day.pins.length-1?C.forest:'#555';
+      var icon=window.L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+        html:'<div style="width:22px;height:22px;border-radius:50%;background:'+bg+';border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-size:9px;font-weight:700;color:white">'+(i+1)+'</div>'});
+      window.L.marker([pin.lat,pin.lng],{icon:icon}).addTo(map).bindPopup('<b>'+(i+1)+'.</b> '+pin.label);});
+    return function(){if(inst.current){inst.current.remove();inst.current=null;}};
+  },[day.id]);
+  return h('div',{style:{margin:'12px 16px 0',borderRadius:10,overflow:'hidden',border:'1px solid '+C.border,isolation:'isolate',position:'relative',zIndex:1}},
+    h('div',{id:mid.current,ref:ref,style:{height:180}}));}
+
+function RouteCard(p){
+  var url='https://www.google.com/maps/dir/'+encodeURIComponent(p.drive.from)+'/'+encodeURIComponent(p.drive.to);
+  return h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,overflow:'hidden',marginBottom:12}},
+    h('div',{style:{padding:'12px 14px'}},
+      h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',color:C.gold,marginBottom:4}},'Route'),
+      h('div',{style:{fontSize:13,fontWeight:600,color:C.dark,marginBottom:2}},p.drive.label),
+      h('div',{style:{fontSize:12,color:C.muted}},p.drive.from+' → '+p.drive.to)),
+    h('a',{href:url,target:'_blank',rel:'noreferrer',
+      style:{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'11px 14px',background:C.forest,color:'#fff',textDecoration:'none',fontSize:13,fontWeight:600}},
+      h(NavIcon,{size:14,color:'#fff'}),' Open route in Google Maps'));}
+
+function Sheet(p){
+  var sr=React.useRef(null),hr=React.useRef(null),sy=React.useRef(null),cy=React.useRef(0);
+  React.useEffect(function(){var pv=document.body.style.overflow;document.body.style.overflow='hidden';return function(){document.body.style.overflow=pv;};},[]);
+  React.useEffect(function(){
+    var hd=hr.current;if(!hd)return;
+    function os(e){sy.current=e.touches[0].clientY;cy.current=0;if(sr.current)sr.current.style.transition='none';}
+    function om(e){if(sy.current===null)return;var dy=e.touches[0].clientY-sy.current;if(dy<=0)return;e.preventDefault();cy.current=dy;if(sr.current)sr.current.style.transform='translateY('+dy+'px)';}
+    function oe(){if(sy.current===null)return;if(sr.current){sr.current.style.transition='transform .25s ease';if(cy.current>60){sr.current.style.transform='translateY(110%)';setTimeout(p.onClose,250);}else{sr.current.style.transform='translateY(0)';}}sy.current=null;}
+    hd.addEventListener('touchstart',os,{passive:true});hd.addEventListener('touchmove',om,{passive:false});hd.addEventListener('touchend',oe,{passive:true});
+    return function(){hd.removeEventListener('touchstart',os);hd.removeEventListener('touchmove',om);hd.removeEventListener('touchend',oe);};
+  },[p.onClose]);
+  return h('div',{onClick:p.onClose,style:{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:100,display:'flex',alignItems:'flex-end'}},
+    h('div',{ref:sr,onClick:function(e){e.stopPropagation();},style:{background:C.bg,width:'100%',maxHeight:'92vh',overflowY:'auto',borderRadius:'16px 16px 0 0',animation:'slideUp .25s ease-out',fontFamily:F}},
+      h('div',{ref:hr,onClick:function(e){e.stopPropagation();},style:{display:'flex',justifyContent:'center',padding:'14px 0 6px',cursor:'grab'}},
+        h('div',{style:{width:44,height:4,borderRadius:2,background:'#C8C3BA'}})),
+      p.children));}
+
+function App(){
+  var useState=React.useState,useRef=React.useRef,useEffect=React.useEffect;
+  var lr=useState(false),leafletReady=lr[0],setLR=lr[1];
+  var tb=useState('trip'),tab=tb[0],setTab=tb[1];
+  var ad=useState('zo'),activeDay=ad[0],setActiveDay=ad[1];
+  var as=useState(null),activeStop=as[0],setActiveStop=as[1];
+  var et=useState(''),editText=et[0],setEditText=et[1];
+  var ed=useState(false),editing=ed[0],setEditing=ed[1];
+  var no=useState({}),notes=no[0],setNotes=no[1];
+  var dn=useState({}),done=dn[0],setDone=dn[1];
+  var pk=useState({}),packChk=pk[0],setPackChk=pk[1];
+  var cl=useState(DEFAULT_CHECKLIST),clItems=cl[0],setClItems=cl[1];
+  var cc=useState({}),clChk=cc[0],setClChk=cc[1];
+  var ci=useState(''),clInput=ci[0],setClInput=ci[1];
+  var cp=useState({}),customPhotos=cp[0],setCustomPhotos=cp[1];
+  var ck=useState([]),customPack=ck[0],setCustomPack=ck[1];
+  var pi=useState(''),packInput=pi[0],setPackInput=pi[1];
+  var photoRef=useRef(null),uploadId=useRef(null);
+
+  useEffect(function(){
+    var scr=document.createElement('script');
+    scr.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    scr.onload=function(){setLR(true);};
+    document.head.appendChild(scr);
+    (async function(){
+      var pairs=[['yt2_notes',setNotes],['yt2_done',setDone],['yt2_packchk',setPackChk],
+        ['yt2_clitems',setClItems],['yt2_clchk',setClChk],['yt2_custphotos',setCustomPhotos],['yt2_custpack',setCustomPack]];
+      for(var i=0;i<pairs.length;i++){try{var r=await window.storage.get(pairs[i][0]);if(r)pairs[i][1](JSON.parse(r.value));}catch(e){}}
+    })();
+  },[]);
+
+  function persist(k,v){window.storage.set(k,JSON.stringify(v)).catch(function(){});}
+  function sn(id,v){var u=Object.assign({},notes);u[id]=v;setNotes(u);persist('yt2_notes',u);}
+  function td(id){var u=Object.assign({},done);u[id]=!u[id];setDone(u);persist('yt2_done',u);}
+  function tp(k){var u=Object.assign({},packChk);u[k]=!u[k];setPackChk(u);persist('yt2_packchk',u);}
+  function tc(id){var u=Object.assign({},clChk);u[id]=!u[id];setClChk(u);persist('yt2_clchk',u);}
+  function addCl(){if(!clInput.trim())return;var u=clItems.concat([{id:'cl_'+Date.now(),text:clInput.trim()}]);setClItems(u);setClInput('');persist('yt2_clitems',u);}
+  function delCl(id){var u=clItems.filter(function(i){return i.id!==id;});setClItems(u);persist('yt2_clitems',u);}
+  function addPk(){if(!packInput.trim())return;var u=customPack.concat([{id:'pk_'+Date.now(),text:packInput.trim()}]);setCustomPack(u);setPackInput('');persist('yt2_custpack',u);}
+  function delPk(id){var u=customPack.filter(function(i){return i.id!==id;});setCustomPack(u);persist('yt2_custpack',u);}
+  function rmPhoto(id){var u=Object.assign({},customPhotos);delete u[id];setCustomPhotos(u);persist('yt2_custphotos',u);}
+  function openStop(s){setActiveStop(s);setEditText(notes[s.id]||(s.bullets||[]).join('\n'));setEditing(false);}
+  function onFile(e){
+    var file=e.target.files&&e.target.files[0];if(!file)return;
+    var sid=uploadId.current;if(!sid)return;
+    var rd=new FileReader();
+    rd.onload=function(ev){
+      var dataUrl=ev.target.result;
+      var img=new Image();
+      img.onload=function(){
+        var mw=800,sc=img.width>mw?mw/img.width:1;
+        var cv=document.createElement('canvas');
+        cv.width=Math.round(img.width*sc);
+        cv.height=Math.round(img.height*sc);
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        var rs=cv.toDataURL('image/jpeg',0.75);
+        setCustomPhotos(function(prev){
+          var u=Object.assign({},prev);
+          u[sid]=rs;
+          persist('yt2_custphotos',u);
+          return u;
+        });
+      };
+      img.src=dataUrl;
+    };
+    rd.readAsDataURL(file);
+    e.target.value='';
+  }
+  function camBtn(sid){
+    var has=!!customPhotos[sid];
+    return h('button',{onClick:function(e){e.stopPropagation();if(has){rmPhoto(sid);}else{uploadId.current=sid;photoRef.current&&photoRef.current.click();}},
+      style:{position:'absolute',bottom:10,right:10,width:40,height:40,borderRadius:'50%',background:'rgba(0,0,0,.45)',border:'1.5px solid rgba(255,255,255,.35)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}},
+      has?h(TrIcon,{size:16,color:'white'}):h(CamSvg));}
+
+  var curDay=DAYS.find(function(d){return d.id===activeDay;});
+  var fnd=curDay.stops.findIndex(function(s){return!done[s.id];});
+  function tbs(t){return{flex:1,padding:'13px 2px',border:'none',cursor:'pointer',fontFamily:F,fontSize:12,fontWeight:600,background:'transparent',
+    color:tab===t?C.forest:C.muted,borderBottom:tab===t?'2px solid '+C.forest:'2px solid transparent'};}
+
+  // Build children array to avoid deeply nested JSX-equivalent
+  var out=[];
+
+  out.push(h('input',{key:'fi',ref:photoRef,type:'file',accept:'image/*',
+    style:{position:'fixed',top:-100,left:-100,opacity:0,width:1,height:1},onChange:onFile}));
+
+  out.push(h('div',{key:'hdr',style:{background:C.forest,color:'#fff',padding:'12px 20px 10px'}},
+    h('div',{style:{fontSize:22,fontWeight:700,letterSpacing:'-.5px'}},'Yosemite & Livermore Wedding'),
+    h('div',{style:{marginTop:6,display:'flex',gap:14,fontSize:11,color:'rgba(255,255,255,.45)',flexWrap:'wrap'}},
+      h('span',null,'KLM ',h('strong',{style:{color:C.amber}},'ZPWETL')),
+      h('span',null,'Lodge ',h('strong',{style:{color:C.amber}},'#16U60F')),
+      h('span',null,'Pak ',h('strong',{style:{color:C.amber}},'13524567')))));
+
+  out.push(h('div',{key:'nav',style:{background:'#fff',borderBottom:'1px solid '+C.border,position:'sticky',top:0,zIndex:30,display:'flex'}},
+    [['trip','Reis'],['food','Eten'],['car','Auto'],['pack','Packing'],['cl','Checklist']].map(function(x){
+      return h('button',{key:x[0],onClick:function(){setTab(x[0]);},style:tbs(x[0])},x[1]);})));
+
+  if(tab==='trip'){
+    var tc2=[];
+    tc2.push(h('div',{key:'pills',style:{display:'flex',padding:'10px 12px',background:C.bg,position:'sticky',top:42,zIndex:25,borderBottom:'1px solid '+C.border,gap:6}},
+      DAYS.map(function(d){var a=activeDay===d.id;
+        return h('button',{key:d.id,onClick:function(){setActiveDay(d.id);},
+          style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',padding:'7px 4px',
+            border:'1.5px solid '+(a?d.color:C.border),borderRadius:9,background:a?d.color:'#fff',
+            color:a?'#fff':C.dark,fontFamily:F,cursor:'pointer',gap:1,minWidth:0}},
+          h('span',{style:{fontSize:9,opacity:a?.75:.4,fontWeight:500}},d.label),
+          h('span',{style:{fontSize:13,fontWeight:700}},d.date.split(' ')[0]));})));
+
+    tc2.push(h('div',{key:'hero',style:{margin:'12px 16px 0',borderRadius:12,overflow:'hidden',position:'relative',height:130}},
+      h(HeroPhoto,{dayId:activeDay,color:curDay.color,customSrc:customPhotos['hero_'+activeDay]}),
+      h('div',{style:{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.65) 0%,rgba(0,0,0,.05) 65%)'}}),
+      h('div',{style:{position:'absolute',bottom:12,left:14,color:'#fff'}},
+        h('div',{style:{fontSize:16,fontWeight:700,lineHeight:1.2}},curDay.title),
+        h('div',{style:{fontSize:11,opacity:.8,marginTop:2}},curDay.subtitle)),
+      camBtn('hero_'+activeDay)));
+
+    tc2.push(leafletReady
+      ? h(DayMap,{key:'map',day:curDay})
+      : h('div',{key:'map',style:{margin:'12px 16px 0',height:50,background:C.card,border:'1px solid '+C.border,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:C.muted,fontSize:13}},'Kaart laden…'));
+
+    var stopEls=curDay.stops.map(function(stop,i){
+      var isDone=!!done[stop.id],isNext=!isDone&&i===fnd;
+      return h('div',{key:stop.id,style:{display:'flex',gap:12,cursor:'pointer'},onClick:function(){openStop(stop);}},
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',paddingTop:20}},
+          h('div',{style:{width:10,height:10,borderRadius:'50%',background:isDone?C.sage:curDay.color,flexShrink:0}}),
+          i<curDay.stops.length-1?h('div',{style:{width:1,flex:1,background:C.border,marginTop:4,minHeight:20}}):null),
+        h('div',{style:{flex:1,background:C.card,borderRadius:10,marginBottom:12,
+          border:isNext?'3px solid '+C.sage:'1px solid '+C.border,overflow:'hidden',opacity:isDone?.38:1,transition:'opacity .2s'}},
+          h('div',{style:{position:'relative'}},
+            h(StopPhoto,{sid:stop.id,dc:curDay.color,h:88,customSrc:customPhotos[stop.id]}),
+            stop.pinIndex!=null?h('div',{style:{position:'absolute',top:8,left:8,width:22,height:22,borderRadius:'50%',
+              background:isDone?'#888':curDay.color,border:'2px solid #fff',display:'flex',alignItems:'center',
+              justifyContent:'center',fontSize:9,fontWeight:700,color:'#fff',boxShadow:'0 1px 4px rgba(0,0,0,.35)'}},stop.pinIndex):null),
+          h('div',{style:{padding:'10px 13px 12px',display:'flex',alignItems:'flex-start',gap:8}},
+            h('div',{style:{flex:1}},
+              stop.time?h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:4}},
+                h('span',{style:{fontSize:13,fontWeight:700,color:curDay.color}},stop.time),
+                stop.dur?h('span',{style:{fontSize:12,color:C.muted,background:C.bg,padding:'2px 7px',borderRadius:8,fontWeight:500}},stop.dur):null):null,
+              h('div',{style:{fontSize:15,fontWeight:700,lineHeight:1.3,textDecoration:isDone?'line-through':'none',marginBottom:4}},stop.label),
+              stop.drive?h('div',{style:{fontSize:12,color:C.muted,display:'flex',gap:4,alignItems:'flex-start'}},
+                h(NavIcon,{size:11,color:C.muted,style:{flexShrink:0,marginTop:2}}),
+                h('span',{style:{textDecoration:isDone?'line-through':'none'}},stop.drive.label)):null,
+              h('div',{style:{fontSize:11,color:'#C0BBB2',marginTop:7}},'Tik voor details')),
+            h('div',{onClick:function(e){e.stopPropagation();td(stop.id);},
+              style:{width:24,height:24,borderRadius:6,border:'2px solid '+(isDone?C.sage:'#C9C4BA'),
+                background:isDone?C.sage:'transparent',display:'flex',alignItems:'center',justifyContent:'center',
+                flexShrink:0,cursor:'pointer',transition:'all .15s',marginTop:2}},
+              isDone?h(ChkIcon,{size:13,color:'#fff',strokeWidth:3}):null))));});
+    tc2.push(h('div',{key:'stops',style:{padding:'14px 16px 0'}},stopEls));
+    out.push(h('div',{key:'trip'},tc2));
+  }
+
+  if(tab==='food'){
+    out.push(h('div',{key:'food',style:{padding:16}},
+      h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:C.muted,marginBottom:20}},'Eetplekken op route'),
+      FOOD.map(function(f,i){return h('div',{key:i,style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',gap:10,marginBottom:8}},
+          h('div',{style:{fontSize:16,fontWeight:700,lineHeight:1.3}},f.name),
+          h('div',{style:{fontSize:10,fontWeight:700,background:f.color+'18',color:f.color,padding:'4px 10px',borderRadius:20,whiteSpace:'nowrap',flexShrink:0,alignSelf:'flex-start'}},f.tag)),
+        h('div',{style:{fontSize:14,color:C.mid,lineHeight:1.6,marginBottom:10}},f.desc),
+        h('div',{style:{fontSize:13,fontWeight:500,marginBottom:3}},f.addr),
+        h('div',{style:{fontSize:13,color:C.muted,marginBottom:12}},f.hours),
+        h('div',{style:{fontSize:13,background:'#F0F7F3',color:C.pine,padding:'8px 12px',borderRadius:7,lineHeight:1.5}},f.tip));})));}
+
+  if(tab==='car'){
+    out.push(h('div',{key:'car',style:{padding:16}},
+      h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:C.muted,marginBottom:20}},'Auto huren'),
+      h('div',{style:{background:C.forest,color:'#fff',borderRadius:10,padding:20,marginBottom:14}},
+        h('div',{style:{fontSize:19,fontWeight:700,color:C.amber,marginBottom:6}},'Enterprise of Alamo via Kayak'),
+        h('div',{style:{fontSize:15,marginBottom:8}},'Economy of Compact — Toyota Corolla, Honda Civic'),
+        h('div',{style:{padding:'10px 14px',background:'rgba(255,255,255,.1)',borderRadius:8,fontSize:15,fontWeight:700,color:C.amber}},'~$45-65 per dag')),
+      h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},
+        h('div',{style:{fontSize:15,fontWeight:700,color:C.pine,marginBottom:10}},'Inleveren + tanken Livermore'),
+        h('div',{style:{fontSize:14,lineHeight:1.9}},
+          h('strong',null,'Chevron'),' — 3594 1st St Livermore (naast Enterprise) — vul VOOR inlevering',h('br'),
+          h('strong',null,'Enterprise'),' — 3569 1st St · 925-449-3600',h('br'),
+          h('strong',null,'Hertz'),' — 1702 N Vasco Rd · 925-371-0788')),
+      h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18}},
+        h('div',{style:{fontSize:15,fontWeight:700,color:C.pine,marginBottom:10}},'Haalt één volle tank?'),
+        h('div',{style:{fontSize:14,color:C.mid,lineHeight:1.7}},'SFO → Manteca → Yosemite → Livermore ≈ 500km. Economy auto: ~50L tank × 13km/L = 650km range. Ja — je redt het net. Maar vul bij bij de Chevron voor inlevering (verplicht, anders $30-50 toeslag).'))));}
+
+  if(tab==='pack'){
+    var prows=[];
+    SHOPPING.forEach(function(cat){
+      var its=cat.items.map(function(item,i){
+        var k=cat.id+'-'+i,dk='del_'+k;
+        if(packChk[dk])return null;
+        var chk=packChk[k];
+        return h('div',{key:i,style:{display:'flex',gap:12,alignItems:'center',padding:'10px 0',borderBottom:i<cat.items.length-1?'1px solid '+C.bg:'none'}},
+          h('div',{onClick:function(){tp(k);},style:{width:22,height:22,borderRadius:5,border:'2px solid '+(chk?C.sage:'#C9C4BA'),background:chk?C.sage:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer',transition:'all .15s'}},
+            chk?h(ChkIcon,{size:13,color:'#fff',strokeWidth:3}):null),
+          h('div',{onClick:function(){tp(k);},style:{flex:1,fontSize:14,textDecoration:chk?'line-through':'none',color:chk?'#C0BBB2':C.dark,cursor:'pointer'}},item),
+          h('button',{onClick:function(){tp(dk);},style:{background:'none',border:'none',cursor:'pointer',color:'#C0BBB2',padding:4,display:'flex'}},h(TrIcon,{size:15,color:'#C0BBB2'})));});
+      prows.push(h('div',{key:cat.id,style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},
+        h('div',{style:{fontSize:15,fontWeight:700,color:C.pine,marginBottom:14}},cat.cat),its));});
+    var cpits=customPack.map(function(item){
+      var k='cp-'+item.id,chk=packChk[k];
+      return h('div',{key:item.id,style:{display:'flex',gap:12,alignItems:'center',padding:'10px 0',borderBottom:'1px solid '+C.bg}},
+        h('div',{onClick:function(){tp(k);},style:{width:22,height:22,borderRadius:5,border:'2px solid '+(chk?C.sage:'#C9C4BA'),background:chk?C.sage:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}},
+          chk?h(ChkIcon,{size:13,color:'#fff',strokeWidth:3}):null),
+        h('div',{onClick:function(){tp(k);},style:{flex:1,fontSize:14,textDecoration:chk?'line-through':'none',color:chk?'#C0BBB2':C.dark,cursor:'pointer'}},item.text),
+        h('button',{onClick:function(){delPk(item.id);},style:{background:'none',border:'none',cursor:'pointer',color:'#C0BBB2',padding:4,display:'flex'}},h(TrIcon,{size:15,color:'#C0BBB2'})));});
+    prows.push(h('div',{key:'cp',style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},
+      h('div',{style:{fontSize:15,fontWeight:700,color:C.pine,marginBottom:14}},'Eigen items'),
+      customPack.length===0?h('div',{style:{fontSize:14,color:'#C0BBB2',fontStyle:'italic',paddingBottom:10}},'Nog geen eigen items.'):null,
+      cpits,
+      h('div',{style:{display:'flex',gap:8,marginTop:16}},
+        h('input',{value:packInput,onChange:function(e){setPackInput(e.target.value);},onKeyDown:function(e){if(e.key==='Enter')addPk();},placeholder:'Item toevoegen…',style:{flex:1,padding:'10px 12px',border:'1px solid '+C.border,borderRadius:8,fontFamily:F,fontSize:14,background:C.bg}}),
+        h('button',{onClick:addPk,style:{padding:'10px 14px',background:C.forest,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',display:'flex',alignItems:'center'}},h(PlsIcon,{size:16,color:'#fff'})))));
+    out.push(h('div',{key:'pack',style:{padding:16}},
+      h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:C.muted,marginBottom:6}},'Packing list'),
+      h('div',{style:{fontSize:14,color:C.muted,marginBottom:20}},'Tik om af te vinken · prullenbak om te verwijderen.'),prows));}
+
+  if(tab==='cl'){
+    var doneCount=clItems.filter(function(i){return clChk[i.id];}).length;
+    var pct=clItems.length>0?Math.round(doneCount/clItems.length*100):0;
+    var clrows=clItems.map(function(item,i){
+      var chk=clChk[item.id];
+      return h('div',{key:item.id,style:{display:'flex',gap:12,alignItems:'flex-start',padding:'11px 0',borderBottom:i<clItems.length-1?'1px solid '+C.bg:'none'}},
+        h('div',{onClick:function(){tc(item.id);},style:{width:22,height:22,borderRadius:5,border:'2px solid '+(chk?C.sage:'#C9C4BA'),background:chk?C.sage:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1,cursor:'pointer',transition:'all .15s'}},
+          chk?h(ChkIcon,{size:13,color:'#fff',strokeWidth:3}):null),
+        h('div',{onClick:function(){tc(item.id);},style:{flex:1,fontSize:14,textDecoration:chk?'line-through':'none',color:chk?'#C0BBB2':C.dark,lineHeight:1.5,cursor:'pointer'}},item.text),
+        h('button',{onClick:function(){delCl(item.id);},style:{background:'none',border:'none',cursor:'pointer',color:'#C0BBB2',padding:'2px 4px',display:'flex',flexShrink:0}},h(TrIcon,{size:14,color:'#C0BBB2'})));});
+    out.push(h('div',{key:'cl',style:{padding:16}},
+      h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color:C.muted,marginBottom:6}},'Checklist'),
+      h('div',{style:{fontSize:14,color:C.muted,marginBottom:20}},'Opgeslagen in je browser.'),
+      h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:10}},
+          h('span',{style:{fontSize:14,fontWeight:600}},'Voortgang'),
+          h('span',{style:{fontSize:14,color:C.muted}},doneCount+' / '+clItems.length)),
+        h('div',{style:{height:8,background:C.bg,borderRadius:4,overflow:'hidden'}},
+          h('div',{style:{height:'100%',width:pct+'%',background:pct===100?C.sage:C.gold,borderRadius:4,transition:'width .3s'}})),
+        pct===100?h('div',{style:{fontSize:13,color:C.sage,fontWeight:600,marginTop:8}},'Alles geregeld — klaar voor vertrek!'):null),
+      h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18,marginBottom:14}},clrows),
+      h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:18}},
+        h('div',{style:{fontSize:14,fontWeight:600,color:C.pine,marginBottom:12}},'Item toevoegen'),
+        h('div',{style:{display:'flex',gap:8}},
+          h('input',{value:clInput,onChange:function(e){setClInput(e.target.value);},onKeyDown:function(e){if(e.key==='Enter')addCl();},placeholder:'Bijv. adapter meenemen…',style:{flex:1,padding:'10px 12px',border:'1px solid '+C.border,borderRadius:8,fontFamily:F,fontSize:14,background:C.bg}}),
+          h('button',{onClick:addCl,style:{padding:'10px 14px',background:C.forest,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',display:'flex',alignItems:'center'}},h(PlsIcon,{size:16,color:'#fff'}))))));}
+
+  if(activeStop){
+    var sheetContent=[];
+    sheetContent.push(h('div',{key:'ph',style:{height:180,position:'relative',overflow:'hidden'}},
+      h(StopPhoto,{sid:activeStop.id,dc:curDay.color,h:180,customSrc:customPhotos[activeStop.id]}),
+      h('div',{style:{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.68) 0%,transparent 55%)'}}),
+      h('div',{style:{position:'absolute',bottom:14,left:18,right:56,color:'#fff'}},
+        activeStop.time?h('div',{style:{fontSize:12,fontWeight:600,opacity:.75,marginBottom:3}},activeStop.time):null,
+        h('div',{style:{fontSize:19,fontWeight:700,lineHeight:1.2}},activeStop.label)),
+      h('button',{onClick:function(){setActiveStop(null);},style:{position:'absolute',top:12,right:12,background:'rgba(0,0,0,.3)',border:'none',color:'#fff',width:34,height:34,borderRadius:'50%',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2}},
+        h(XIcon,{size:17,color:'#fff'})),
+      camBtn(activeStop.id)));
+
+    var bodyParts=[];
+    if(activeStop.drive&&leafletReady) bodyParts.push(h(RouteCard,{key:'rc',drive:activeStop.drive}));
+    bodyParts.push(h('div',{key:'notes',style:{background:C.card,border:'1.5px solid '+curDay.color+'30',borderRadius:10,padding:16,marginBottom:12}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+        h('div',{style:{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',color:curDay.color}},'Details & notities'),
+        !editing
+          ?h('button',{onClick:function(){setEditing(true);},style:{background:curDay.color,border:'none',color:'#fff',padding:'6px 14px',borderRadius:6,cursor:'pointer',fontFamily:F,fontSize:13,fontWeight:600}},'Bewerk')
+          :h('button',{onClick:function(){sn(activeStop.id,editText);setEditing(false);},style:{background:C.forest,border:'none',color:'#fff',padding:'6px 14px',borderRadius:6,cursor:'pointer',fontFamily:F,fontSize:13,fontWeight:600,display:'flex',alignItems:'center',gap:6}},
+            h(ChkIcon,{size:13,color:'#fff'}),' Bewaar')),
+      editing
+        ?h('textarea',{value:editText,onChange:function(e){setEditText(e.target.value);},autoFocus:true,style:{width:'100%',minHeight:160,padding:12,border:'1px solid '+C.border,borderRadius:8,fontFamily:F,fontSize:14,resize:'vertical',lineHeight:1.7,background:C.bg}})
+        :h('div',{style:{fontSize:14,lineHeight:1}},
+          (notes[activeStop.id]||(activeStop.bullets||[]).join('\n')).split('\n').filter(Boolean).map(function(line,i){
+            return h('div',{key:i,style:{display:'flex',gap:8,marginBottom:10,alignItems:'flex-start'}},
+              h('div',{style:{width:6,height:6,borderRadius:'50%',background:curDay.color,flexShrink:0,marginTop:6}}),
+              h('div',{style:{fontSize:14,lineHeight:1.5,color:C.dark}},line));})),));
+    bodyParts.push(h('a',{key:'maps',
+      href:activeStop.drive
+        ?'https://www.google.com/maps/dir/'+encodeURIComponent(activeStop.drive.from)+'/'+encodeURIComponent(activeStop.drive.to)
+        :'https://maps.google.com/?q='+encodeURIComponent(activeStop.label+' California'),
+      target:'_blank',rel:'noreferrer',
+      style:{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:C.forest,color:'#fff',textDecoration:'none',borderRadius:10,fontSize:14,fontWeight:600,marginBottom:8,fontFamily:F}},
+      h(NavIcon,{size:16,color:'#fff'}),activeStop.drive?' Open route in Google Maps':' Open in Google Maps'));
+
+    sheetContent.push(h('div',{key:'body',style:{padding:18}},bodyParts));
+    out.push(h(Sheet,{key:'sheet',onClose:function(){setActiveStop(null);}},sheetContent));}
+
+  out.push(h('div',{key:'footer',style:{textAlign:'center',padding:'20px 0',fontSize:11,letterSpacing:2,color:'#C0BBB2',textTransform:'uppercase'}},'Sander · Yosemite & Livermore 2026'));
+
+  return h('div',{style:{minHeight:'100vh',background:C.bg,color:C.dark,fontFamily:F,paddingBottom:60}},out);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+})();
+</script>
+</body>
+</html>
