@@ -564,17 +564,28 @@ function App(){
   function onFile(e){
     var file=e.target.files&&e.target.files[0];if(!file)return;
     var sid=uploadId.current;if(!sid)return;
-    var ou=URL.createObjectURL(file);
-    setCustomPhotos(function(prev){var u=Object.assign({},prev);u[sid]=ou;return u;});
     var rd=new FileReader();
-    rd.onload=function(ev){var img=new Image();img.onload=function(){
-      var mw=800,sc=img.width>mw?mw/img.width:1,cv=document.createElement('canvas');
-      cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
-      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-      var rs=cv.toDataURL('image/jpeg',.75);
-      setCustomPhotos(function(prev){var u=Object.assign({},prev);u[sid]=rs;persist('yt2_custphotos',u);return u;});
-      URL.revokeObjectURL(ou);};img.src=ev.target.result;};
-    rd.readAsDataURL(file);e.target.value='';
+    rd.onload=function(ev){
+      var dataUrl=ev.target.result;
+      var img=new Image();
+      img.onload=function(){
+        var mw=800,sc=img.width>mw?mw/img.width:1;
+        var cv=document.createElement('canvas');
+        cv.width=Math.round(img.width*sc);
+        cv.height=Math.round(img.height*sc);
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        var rs=cv.toDataURL('image/jpeg',0.75);
+        setCustomPhotos(function(prev){
+          var u=Object.assign({},prev);
+          u[sid]=rs;
+          persist('yt2_custphotos',u);
+          return u;
+        });
+      };
+      img.src=dataUrl;
+    };
+    rd.readAsDataURL(file);
+    e.target.value='';
   }
   function camBtn(sid){
     var has=!!customPhotos[sid];
